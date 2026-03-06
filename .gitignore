@@ -1,1 +1,8 @@
+
 agent/mcps/mcp.json
+*.local*
+.env
+chats
+*.pyc
+rsa_key.*
+launch
