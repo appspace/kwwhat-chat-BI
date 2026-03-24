@@ -1,0 +1,23 @@
+{
+	"name": "@nao/shared",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./types": "./src/types.ts",
+		"./posthog": "./src/posthog.ts",
+		"./tools": "./src/tools/index.ts"
+	},
+	"scripts": {
+		"test": "vitest run",
+		"lint": "tsc --noEmit && eslint",
+		"lint:fix": "eslint --fix",
+		"format": "prettier --write ."
+	},
+	"dependencies": {
+		"zod": "^4.2.1"
+	},
+	"devDependencies": {
+		"vitest": "^4.0.18"
+	}
+}

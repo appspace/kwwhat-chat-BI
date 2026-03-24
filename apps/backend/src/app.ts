@@ -1,0 +1,206 @@
+import formbody from '@fastify/formbody';
+import fastifyStatic from '@fastify/static';
+import { fastifyTRPCPlugin, FastifyTRPCPluginOptions } from '@trpc/server/adapters/fastify';
+import fastify from 'fastify';
+import fastifyRawBody from 'fastify-raw-body';
+import { serializerCompiler, validatorCompiler, ZodTypeProvider } from 'fastify-type-provider-zod';
+import { existsSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+import { env } from './env';
+import { ensureOrganizationSetup } from './queries/organization.queries';
+import { agentRoutes } from './routes/agent';
+import { authRoutes } from './routes/auth';
+import { chartRoutes } from './routes/chart';
+import { slackRoutes } from './routes/slack';
+import { teamsRoutes } from './routes/teams';
+import { telegramRoutes } from './routes/telegram';
+import { testRoutes } from './routes/test';
+import { whatsappRoutes } from './routes/whatsapp';
+import { posthog, PostHogEvent } from './services/posthog';
+import { TrpcRouter, trpcRouter } from './trpc/router';
+import { createContext } from './trpc/trpc';
+import { HandlerError } from './utils/error';
+import { startLogCleanup } from './utils/log-cleanup';
+import { logger } from './utils/logger';
+
+// Get the directory of the current module (works in both dev and compiled)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const isDev = env.MODE !== 'prod';
+// pino-pretty transport uses worker threads and can't be resolved inside a Bun-compiled binary.
+// Unix path: /$bunfs/root/..., Windows path: B:/~BUN/root/...
+const isCompiled = typeof Bun !== 'undefined' && /(\$bunfs|~BUN)/.test(Bun.main);
+
+const app = fastify({
+	logger:
+		isDev && !isCompiled
+			? {
+					transport: {
+						target: 'pino-pretty',
+						options: {
+							colorize: true,
+							ignore: 'pid,hostname',
+							translateTime: 'HH:MM:ss',
+						},
+					},
+				}
+			: true,
+	bodyLimit: 35 * 1024 * 1024, // ~25 MB audio * 4/3 base64 overhead + JSON envelope
+	routerOptions: { maxParamLength: 2048 },
+}).withTypeProvider<ZodTypeProvider>();
+export type App = typeof app;
+
+// Set the validator and serializer compilers for the Zod type provider
+app.setValidatorCompiler(validatorCompiler);
+app.setSerializerCompiler(serializerCompiler);
+
+// Map HandlerError to HTTP status code
+app.setErrorHandler((error, request, reply) => {
+	const message = error instanceof Error ? error.message : String(error);
+	const statusCode =
+		typeof (error as Record<string, unknown>).statusCode === 'number'
+			? (error as Record<string, unknown>).statusCode
+			: undefined;
+	logger.error(message, {
+		source: 'http',
+		context: { method: request.method, url: request.url, statusCode },
+	});
+	if (error instanceof HandlerError) {
+		return reply.status(error.code).send({ error: error.message });
+	}
+	throw error;
+});
+
+// Log HTTP requests to the database (skip log-polling to avoid self-referential noise)
+app.addHook('onResponse', (request, reply, done) => {
+	if (request.url.includes('log.getLogs')) {
+		done();
+		return;
+	}
+	if (reply.statusCode >= 400) {
+		done();
+		return;
+	}
+	logger.info(`${request.method} ${request.url} ${reply.statusCode}`, {
+		source: 'http',
+		context: { method: request.method, url: request.url, statusCode: reply.statusCode, elapsed: reply.elapsedTime },
+	});
+	done();
+});
+
+// Register raw body plugin for Slack signature verification
+app.register(fastifyRawBody, {
+	field: 'rawBody',
+	global: false,
+	runFirst: true,
+});
+
+// Register formbody plugin for Slack interaction payloads (application/x-www-form-urlencoded)
+app.register(formbody);
+
+// Register tRPC plugin
+app.register(fastifyTRPCPlugin, {
+	prefix: '/api/trpc',
+	trpcOptions: {
+		router: trpcRouter,
+		createContext,
+		onError({ path, error }) {
+			logger.error(`tRPC error on ${path}: ${error.message}`, {
+				source: 'http',
+				context: { path, code: error.code },
+			});
+		},
+	} satisfies FastifyTRPCPluginOptions<TrpcRouter>['trpcOptions'],
+});
+
+app.register(agentRoutes, {
+	prefix: '/api/agent',
+});
+
+app.register(testRoutes, {
+	prefix: '/api/test',
+});
+
+app.register(chartRoutes, {
+	prefix: '/c',
+});
+
+app.register(authRoutes, {
+	prefix: '/api',
+});
+
+app.register(slackRoutes, {
+	prefix: '/api/webhooks/slack',
+});
+
+app.register(teamsRoutes, {
+	prefix: '/api/webhooks/teams',
+});
+
+app.register(telegramRoutes, {
+	prefix: '/api/webhooks/telegram',
+});
+
+app.register(whatsappRoutes, {
+	prefix: '/api/webhooks/whatsapp',
+});
+
+/**
+ * Tests the API connection
+ */
+app.get('/api', async () => {
+	return 'Welcome to the API!';
+});
+
+// Serve frontend static files in production
+// Look for frontend dist in multiple possible locations
+const execDir = dirname(process.execPath); // Directory containing the compiled binary
+const possibleStaticPaths = [
+	join(execDir, 'public'), // Bun compiled: public folder next to binary
+	join(__dirname, 'public'), // When bundled: public folder next to compiled code
+	join(__dirname, '../public'), // Alternative bundled location
+	join(__dirname, '../../frontend/dist'), // Development: relative to backend src
+];
+
+const staticRoot = possibleStaticPaths.find((p) => existsSync(p));
+console.log('Static root:', staticRoot || 'Not found (API-only mode)');
+
+if (staticRoot) {
+	app.register(fastifyStatic, {
+		root: staticRoot,
+		prefix: '/',
+		wildcard: false,
+	});
+
+	// SPA fallback: serve index.html for all non-API routes
+	app.setNotFoundHandler((request, reply) => {
+		if (request.url.startsWith('/api') || request.url.startsWith('/c')) {
+			reply.status(404).send({ error: 'Not found' });
+		} else {
+			reply.sendFile('index.html');
+		}
+	});
+}
+
+export const startServer = async (opts: { port: number; host: string }) => {
+	await ensureOrganizationSetup();
+	startLogCleanup();
+
+	const address = await app.listen({ host: opts.host, port: opts.port });
+	app.log.info(`Server is running on ${address}`);
+
+	posthog.capture(undefined, PostHogEvent.ServerStarted, { ...opts, address });
+
+	const handleShutdown = async () => {
+		await posthog.shutdown();
+		process.exit(0);
+	};
+
+	process.on('SIGINT', handleShutdown);
+	process.on('SIGTERM', handleShutdown);
+};
+
+export default app;
