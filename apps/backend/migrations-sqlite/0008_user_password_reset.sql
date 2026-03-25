@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `requires_password_reset` integer DEFAULT false NOT NULL;

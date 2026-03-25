@@ -1,1 +1,0 @@
-ALTER TABLE "project_llm_config" ADD COLUMN "credentials" jsonb;

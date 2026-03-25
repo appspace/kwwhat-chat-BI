@@ -1,1 +1,0 @@
-ALTER TABLE `story_version` ADD `archived_at` integer;

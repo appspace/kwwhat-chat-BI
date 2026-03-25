@@ -1,1 +1,0 @@
-ALTER TABLE `user` ADD `memory_enabled` integer DEFAULT true NOT NULL;

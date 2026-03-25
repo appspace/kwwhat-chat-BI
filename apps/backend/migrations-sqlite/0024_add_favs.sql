@@ -1,1 +1,0 @@
-ALTER TABLE `chat` ADD `is_starred` integer DEFAULT false NOT NULL;
