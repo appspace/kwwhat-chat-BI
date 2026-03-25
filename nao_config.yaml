@@ -1,3 +1,13 @@
 project_name: kwwhat-chat-BI
-databases: []
+databases:
+  - name: snowflake
+    type: snowflake
+    credentials_path: databases/snowflake.json
+    include:
+      - DBT_PROD.fact_*
+      - DBT_PROD.dim_*
+    accessors:
+      - columns
+      - description
+      - preview
 repos: []
