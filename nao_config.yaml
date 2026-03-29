@@ -1,11 +1,17 @@
 project_name: kwwhat-chat-BI
 databases:
-  - name: snowflake
+  - name: snowflake_prod
     type: snowflake
-    credentials_path: databases/snowflake.json
+    username: "{{ env('SNOWFLAKE_USER') }}"
+    account_id: "{{ env('SNOWFLAKE_ACCOUNT_ID') }}"
+    database: "{{ env('SNOWFLAKE_DATABASE') }}"
+    private_key_path: "{{ env('SNOWFLAKE_KEY_PATH') }}"
+    passphrase: "{{ env('SNOWFLAKE_KEY_PASSPHRASE') }}"
+    warehouse: "{{ env('SNOWFLAKE_WAREHOUSE') }}"
+    schema_name: "{{ env('SNOWFLAKE_SCHEMA_NAME') }}"
     include:
-      - DBT_PROD.fact_*
-      - DBT_PROD.dim_*
+      - fact_*
+      - dim_*
     accessors:
       - columns
       - description

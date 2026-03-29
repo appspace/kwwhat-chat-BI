@@ -6,5 +6,4 @@ chats
 *.pyc
 rsa_key.*
 keys/
-databases/snowflake.json
 launch
