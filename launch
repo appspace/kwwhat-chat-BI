@@ -1,2 +1,3 @@
 source ../kwwhat/venv/bin/activate
+set -a && source .env && set +a
 nao chat
