@@ -4,6 +4,6 @@ agent/mcps/mcp.json
 .env
 chats
 *.pyc
-rsa_key.*
 keys/
 launch
+nao_env
