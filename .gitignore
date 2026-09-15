@@ -2,6 +2,7 @@
 agent/mcps/mcp.json
 *.local*
 .env
+.venv
 chats
 *.pyc
 keys/
