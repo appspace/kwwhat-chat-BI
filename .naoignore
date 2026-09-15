@@ -1,2 +1,4 @@
 templates/
 *.j2
+.deploy
+launch
