@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+source ./nao_venv/bin/activate
+set -a
+source .env
+set +a
+
+nao deploy https://app.getnao.io --api_key $NAO_DEPLOY_API_KEY
