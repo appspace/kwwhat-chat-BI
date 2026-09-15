@@ -7,5 +7,5 @@ agent/mcps/mcp.json
 chats
 *.pyc
 keys/
-launch
-nao_env
+.launch
+nao_venv

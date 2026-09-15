@@ -1,4 +1,5 @@
 templates/
 *.j2
 .deploy
-launch
+.launch
+nao_venv

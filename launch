@@ -1,3 +1,0 @@
-source ./nao_venv/bin/activate
-set -a && source .env && set +a
-nao chat
