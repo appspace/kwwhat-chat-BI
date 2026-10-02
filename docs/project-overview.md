@@ -1,3 +1,9 @@
+<img
+  alt="kwwhat banner and logo" 
+  src="https://github.com/user-attachments/assets/7460eae2-b0d7-4366-ad87-947103054d9a"
+style="width: 100%; height: auto;"
+/>
+
 # kWwhat: open-source EV charging context layer
 the data foundation you plug into an agentic stack to give it EV charging awareness out of the box [here](https://github.com/appspace/kwwhat)
 
@@ -9,7 +15,7 @@ This project is designed for AI engineers, data practitioners, and CSMS provider
 
 ---
 
-## What's included
+## What’s included
 
 - Source modeling for raw OCPP logs (StatusNotification, Heartbeat, Start/StopTransaction)
 - Charge attempt and visit models
@@ -28,6 +34,12 @@ This project is designed for AI engineers, data practitioners, and CSMS provider
 | `troubled_success_rate` | Proportion of visits that were troubled success |
 | `failed_rate` | Proportion of visits that failed |
 | `average_attempts_per_visit` | Total charge attempts divided by total visits |
+
+---
+
+## Try it yourself
+
+The fastest way to see what kwwhat can do is the self-contained [Chat BI demo](demo/README.md) — ask plain-English questions about EV charger reliability and get answers grounded in real OCPP data. No cloud account needed, runs locally. Or explore a live [Tableau dashboard](https://public.tableau.com/app/profile/daria.sukhareva1853/viz/WIPkwwhatdemo/Overview) if you want to see the metrics without running anything.
 
 ---
 
@@ -58,6 +70,9 @@ Two grouping strategies are used depending on whether the driver successfully au
 For authenticated drivers, all charge attempts by the same driver at the same location within a 30-minute window belong to the same visit. A gap of 30 or more minutes, or a different location, starts a new visit.
 
 For unauthenticated drivers, attempts on the same port within a 2-minute window belong to the same visit. Different ports always start a new visit. When an anonymous attempt immediately precedes an authorized attempt on the same port within 2 minutes, the driver identity is inferred retroactively.
+    
+<img alt="visit same driver" src="https://github.com/user-attachments/assets/f0f4c775-4aeb-43a1-9e91-00dc73df5f0e" width="48%" />
+<img alt="visit unknown driver" src="https://github.com/user-attachments/assets/905e79e9-b5c3-4c42-8801-5c5c9b24cb79" width="48%" />
 
 This model unlocks four driver-centric metrics: first attempt success rate (charging worked on the first try), troubled success rate (succeeded after retrying), failure rate (no successful charge in the visit), and average attempts per visit (a guardrail for how much effort drivers expend).
 
@@ -71,11 +86,22 @@ Together, these shift the question from "did this transaction complete?" to "did
 
 **Charge attempt** is successful when:
   - there is a transaction (energy transfer)
-  - next connector status is not 'Faulted'
-  - transaction stop reason is 'Local' or 'Remote' or 'EVDisconnected'
+  - next connector status is not ‘Faulted'
+  - transaction stop reason is 'Local’ or ‘Remote’ or ‘EVDisconnected'
   - energy transferred is above 0.1 kWh
   
  Success criteria are partially borrowed from https://github.com/chargex-consortium/OCPP-2.0.1-Interim-KPI-Calculator and/or are a modification of visit success when at least one charge attempt is successful here [Customer-Focused Key Performance Indicators (KPIs) for Electric Vehicle Charging](https://inl.gov/content/uploads/2024/05/chargex-Customer-Focused-KPIs-for-EV-Charging-6-24-24.pdf)
+
+---
+
+## Installation
+
+```bash
+git clone https://github.com/YOUR_USERNAME/kwwhat.git
+cd kwwhat
+````
+
+Then update your `profiles.yml` to point to your raw data location (e.g., DuckDB, BigQuery, Snowflake, Redshift, etc.).
 
 ---
 
@@ -103,6 +129,28 @@ Designed based on industry frameworks and academic research to align metrics wit
 
 ---
 
+## Disclaimer
+
+This project was created independently and outside of any prior employment. It does **not** include any proprietary information, logic, or data.
+
+---
+
+## License
+
+The kwwhat project is licensed under the [MIT License](LICENSE).
+External datasets and tools used in this repo follow their respective licenses as noted above.
+
+---
+
+## Contributing
+
+Open to contributions from the EV data community. If you’re building in this space and want to improve reliability tracking, user experience analytics, or charger diagnostics — join in!
+
+---
+
 ## Contact
 
 Questions? Ideas? Drop an issue or find us on LinkedIn [kwwhat](https://www.linkedin.com/company/108154470)
+
+
+
